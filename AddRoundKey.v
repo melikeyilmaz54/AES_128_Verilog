@@ -1,6 +1,6 @@
 //key ve girişi XOR işleminden geçirir.
 `timescale 1ns / 1ps
-module AddRoundKey(
+module AddRoundKey(//ÇALIŞIYOR
     input [127:0] datain,
     input [127:0] key,
     output [127:0] dataout
