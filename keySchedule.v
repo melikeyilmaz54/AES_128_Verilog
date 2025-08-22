@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps
+`timescale 1ns / 1ps//ÇALIŞIYOR
 module keySchedule(
     input clk,rst,
     input [127:0] key,
@@ -7,7 +7,7 @@ module keySchedule(
 
     );
     
-     // S-box modülünün çıkışları
+     // S-box modülünün çıkışları 
     wire [7:0] sb_b3, sb_b2, sb_b1, sb_b0;
 
     reg [31:0] w [0:43];         // w[0..3] = base key, w[4..43] üretilecek
@@ -47,12 +47,14 @@ module keySchedule(
             case(state)
                 S_IDLE: begin//DURUM 0 tüm başlangıç adımları ilk atamalar
                     if (!did_init) begin// did_init 0 ise ilk atamalar yapılır
-                        w[0] <= key[31:0];   
-                        w[1] <= key[63:32];  
-                        w[2] <= key[95:64];  
-                        w[3] <= key[127:96]; 
+                        // Yeni (MSB-first, ÖNERİLEN):
+                        w[0] <= key[127:96];  // MSB word
+                        w[1] <= key[95:64];
+                        w[2] <= key[63:32];
+                        w[3] <= key[31:0];    // LSB word
                         
-                        w_all_r[1407:1280] <= {key[127:96], key[95:64], key[63:32], key[31:0]};
+                        w_all_r[1407:1280] <= { key[127:96], key[95:64], key[63:32], key[31:0] };
+
                         key_ready_index <= 4'd1; // base key (round0) hazır
                         
                         idx <= 6'b000100;
@@ -66,10 +68,11 @@ module keySchedule(
                         did_init <= 1'b1;
                         state <= S_IDLE;
                     end else begin
-                        if((idx[1:0] == 2'b00) == 0 )begin// mod 4 - g() fonksiyonuna girmesi gerekir.
+                        if((idx[1:0] == 2'b00))begin// mod 4 - g() fonksiyonuna girmesi gerekir.
                             temp_reg <= w[idx-1];           // w[i-1]
-                            state    <= S_LEFTSHIFT;        // g(): LEFTSHIFT'e geç
                             round_num <= (idx >> 2);// 2 kaydırarak 4 e bölünür ve round sayısı hesaplanır
+                            state    <= S_LEFTSHIFT;        // g(): LEFTSHIFT'e geç
+                            
                         end else begin
                             temp_reg <= w[idx-1];           // g() yoksa temp=w[i-1]
                             state    <= S_XOR;              // direkt XOR'a geç
@@ -105,56 +108,65 @@ module keySchedule(
                 end
                 
                 S_WRITE: begin//DURUM 6  Sonraki adım için idx/round güncelle ve doğrudan bir sonraki duruma geç
+                   // idx kelimesini yaz
                     w[idx] <= new_w;
                     
-                    // w_all_r[...] <= new_w;  (Verilog-2001: case ile)
+                    // w_all_r'ye yerleştirme (Verilog-2001 uyumlu, sabit dilimler)
                     case (idx)
-                        0:  w_all_r[1407:1376] <= new_w;
-                        1:  w_all_r[1375:1344] <= new_w;
-                        2:  w_all_r[1343:1312] <= new_w;
-                        3:  w_all_r[1311:1280] <= new_w;
-                        4:  w_all_r[1279:1248] <= new_w;
-                        5:  w_all_r[1247:1216] <= new_w;
-                        6:  w_all_r[1215:1184] <= new_w;
-                        7:  w_all_r[1183:1152] <= new_w;
-                        8:  w_all_r[1151:1120] <= new_w;
-                        9:  w_all_r[1119:1088] <= new_w;
-                        10: w_all_r[1087:1056] <= new_w;
-                        11: w_all_r[1055:1024] <= new_w;
-                        12: w_all_r[1023:992]  <= new_w;
-                        13: w_all_r[991:960]   <= new_w;
-                        14: w_all_r[959:928]   <= new_w;
-                        15: w_all_r[927:896]   <= new_w;
-                        16: w_all_r[895:864]   <= new_w;
-                        17: w_all_r[863:832]   <= new_w;
-                        18: w_all_r[831:800]   <= new_w;
-                        19: w_all_r[799:768]   <= new_w;
-                        20: w_all_r[767:736]   <= new_w;
-                        21: w_all_r[735:704]   <= new_w;
-                        22: w_all_r[703:672]   <= new_w;
-                        23: w_all_r[671:640]   <= new_w;
-                        24: w_all_r[639:608]   <= new_w;
-                        25: w_all_r[607:576]   <= new_w;
-                        26: w_all_r[575:544]   <= new_w;
-                        27: w_all_r[543:512]   <= new_w;
-                        28: w_all_r[511:480]   <= new_w;
-                        29: w_all_r[479:448]   <= new_w;
-                        30: w_all_r[447:416]   <= new_w;
-                        31: w_all_r[415:384]   <= new_w;
-                        32: w_all_r[383:352]   <= new_w;
-                        33: w_all_r[351:320]   <= new_w;
-                        34: w_all_r[319:288]   <= new_w;
-                        35: w_all_r[287:256]   <= new_w;
-                        36: w_all_r[255:224]   <= new_w;
-                        37: w_all_r[223:192]   <= new_w;
-                        38: w_all_r[191:160]   <= new_w;
-                        39: w_all_r[159:128]   <= new_w;
-                        40: w_all_r[127:96]    <= new_w;
-                        41: w_all_r[95:64]     <= new_w;
-                        42: w_all_r[63:32]     <= new_w;
-                        43: w_all_r[31:0]      <= new_w;
-                        default: ;
+                      // round0 zaten daha önce: w0..w3 -> [1407:1280]
+                    
+                       4:  w_all_r[1279:1248] <= new_w; // w4
+                       5:  w_all_r[1247:1216] <= new_w; // w5
+                       6:  w_all_r[1215:1184] <= new_w; // w6
+                       7:  w_all_r[1183:1152] <= new_w; // w7   (round1 tamam)
+                    
+                       8:  w_all_r[1151:1120] <= new_w; // w8
+                       9:  w_all_r[1119:1088] <= new_w; // w9
+                      10:  w_all_r[1087:1056] <= new_w; // w10
+                      11:  w_all_r[1055:1024] <= new_w; // w11  (round2 tamam)
+                    
+                      12:  w_all_r[1023:992]  <= new_w; // w12
+                      13:  w_all_r[991:960]   <= new_w; // w13
+                      14:  w_all_r[959:928]   <= new_w; // w14
+                      15:  w_all_r[927:896]   <= new_w; // w15  (round3)
+                    
+                      16:  w_all_r[895:864]   <= new_w; // w16
+                      17:  w_all_r[863:832]   <= new_w; // w17
+                      18:  w_all_r[831:800]   <= new_w; // w18
+                      19:  w_all_r[799:768]   <= new_w; // w19  (round4)
+                    
+                      20:  w_all_r[767:736]   <= new_w; // w20
+                      21:  w_all_r[735:704]   <= new_w; // w21
+                      22:  w_all_r[703:672]   <= new_w; // w22
+                      23:  w_all_r[671:640]   <= new_w; // w23  (round5)
+                    
+                      24:  w_all_r[639:608]   <= new_w; // w24
+                      25:  w_all_r[607:576]   <= new_w; // w25
+                      26:  w_all_r[575:544]   <= new_w; // w26
+                      27:  w_all_r[543:512]   <= new_w; // w27  (round6)
+                    
+                      28:  w_all_r[511:480]   <= new_w; // w28
+                      29:  w_all_r[479:448]   <= new_w; // w29
+                      30:  w_all_r[447:416]   <= new_w; // w30
+                      31:  w_all_r[415:384]   <= new_w; // w31  (round7)
+                    
+                      32:  w_all_r[383:352]   <= new_w; // w32
+                      33:  w_all_r[351:320]   <= new_w; // w33
+                      34:  w_all_r[319:288]   <= new_w; // w34
+                      35:  w_all_r[287:256]   <= new_w; // w35  (round8)
+                    
+                      36:  w_all_r[255:224]   <= new_w; // w36
+                      37:  w_all_r[223:192]   <= new_w; // w37
+                      38:  w_all_r[191:160]   <= new_w; // w38
+                      39:  w_all_r[159:128]   <= new_w; // w39  (round9)
+                    
+                      40:  w_all_r[127:96]    <= new_w; // w40
+                      41:  w_all_r[95:64]     <= new_w; // w41
+                      42:  w_all_r[63:32]     <= new_w; // w42
+                      43:  w_all_r[31:0]      <= new_w; // w43  (round10)
+                      default: ;
                     endcase
+
                      // Her kelime yazıldığında w_all_r'yi güncelle
 //                    w_all_r[1407 - 32*idx -: 32] <= new_w;
                     
