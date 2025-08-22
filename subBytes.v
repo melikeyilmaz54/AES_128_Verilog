@@ -7,8 +7,8 @@ module subBytes(//4 parça
     generate
     for(i=0; i<128; i=i+8)begin:sub_Bytes //adlandırma
         sbox s (
-                .in  (in [i+7 : i]),
-                .out (out[i+7 : i])
+                .sbin  (in [i+7 : i]),
+                .sbout (out[i+7 : i])
             );
         end    
     endgenerate
