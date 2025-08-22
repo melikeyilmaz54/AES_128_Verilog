@@ -1,9 +1,9 @@
-`timescale 1ns / 1ps
+`timescale 1ns / 1ps//ÇALIŞIYOR
 module AES_Decrypt(
     input clk,rst,          
     input [127:0] key,      
     input [127:0] data_in,  
-    output [127:0]data_out  
+    output [127:0] data_out
     );                      
 
     wire [3:0] key_ready_index;
@@ -14,9 +14,10 @@ module AES_Decrypt(
     wire [1407:0] key_all_out;
     
     reg [3:0] round;
-    reg [127:0] temp_reg;
+    reg [127:0] temp_reg_dec;
     reg [127:0] out;
     
+    assign data_out = out;
 //    wire [127:0] round_key;
     // 11 round anahtarı (key0..key10)
     wire [127:0] round_keys [0:10];
@@ -52,7 +53,7 @@ module AES_Decrypt(
       endcase
     end
 
-    assign data_out = out;
+    
 //    assign round_key = key_all_out[1407 - ((10 - round) * 128) -: 128];
     
     localparam S_IDLE              = 3'b000;  //DURUM 0
@@ -61,7 +62,7 @@ module AES_Decrypt(
     localparam S_INVMIXCOLUMNS     = 3'b011;  //DURUM 3
     localparam S_ADDROUNDKEY       = 3'b100;  //DURUM 4
     localparam S_WRITE             = 3'b101;  //DURUM 5
-    localparam S_WAITKEY           = 3'B110;  //DURUM 6
+    localparam S_WAITKEY           = 3'b110;  //DURUM 6
     
     reg [2:0] state;
     
@@ -69,26 +70,27 @@ module AES_Decrypt(
         if(!rst)begin
             round <= 0;
             state <= S_IDLE;
+            out   <= 0;
         end else begin
             case(state)
-                S_IDLE:begin 
-                    temp_reg <= data_in;
+                S_IDLE:begin //DURUM 0
+                    temp_reg_dec <= data_in;
                     state <= S_WAITKEY; 
                 end
                 
-                S_INVSHIFTROWS:begin
+                S_INVSHIFTROWS:begin//DURUM 2
                     round <= round + 1'b1;
-                    temp_reg <= invshiftrows_out;
+                    temp_reg_dec <= invshiftrows_out;
                     state <= S_INVSUBBYTES;
                 end
                 
-                S_INVSUBBYTES:begin
-                    temp_reg <= invsubbytes_out;
+                S_INVSUBBYTES:begin//DURUM 1
+                    temp_reg_dec <= invsubbytes_out;
                     state <= S_WAITKEY;
                 end
                 
-                S_ADDROUNDKEY:begin
-                    temp_reg <= addround_out; 
+                S_ADDROUNDKEY:begin //DURUM 4
+                    temp_reg_dec <= addround_out; 
                     
                     if(round==10)begin //10. turda döngü biter yazma aşamasına geçilir
                         state <= S_WRITE; 
@@ -99,8 +101,8 @@ module AES_Decrypt(
                     end
                 end
                 
-                S_INVMIXCOLUMNS:begin
-                    temp_reg <= invmixcolumns_out;
+                S_INVMIXCOLUMNS:begin//DURUM 3
+                    temp_reg_dec <= invmixcolumns_out;
                     state <= S_INVSHIFTROWS;
                 end
                 
@@ -114,8 +116,8 @@ module AES_Decrypt(
                 end
                 
                 S_WRITE:begin
-                    out <= temp_reg;
-                    state <= S_IDLE;
+                    out <= temp_reg_dec;
+                    state <= S_WRITE;
                 end
             endcase
         end
@@ -123,33 +125,33 @@ module AES_Decrypt(
     
     
     
-//    AddRoundKey addroundkey2(
-//        .datain(temp_reg),
-//        .key(round_key),
-//        .dataout(addround_out)
-//    );
+    AddRoundKey addroundkey2(
+        .datain(temp_reg_dec),
+        .key(round_key),
+        .dataout(addround_out)
+    );
     
-//    inverseMixColumns imc(
-//        .imcin(temp_reg),
-//        .imcout(invmixcolumns_out)
-//    );
+    inverseMixColumns imc(
+        .imcin(temp_reg_dec),
+        .imcout(invmixcolumns_out)
+    );
     
-//    inverseShiftRows isr(
-//    .in(temp_reg),
-//    .ishiftout(invshiftrows_out)
-//    );
+    inverseShiftRows isr(
+    .in(temp_reg_dec),
+    .ishiftout(invshiftrows_out)
+    );
     
-//    inverseSubBytes isb(
-//    .in(temp_reg),
-//    .out(invsubbytes_out)
-//    );
+    inverseSubBytes isb(
+    .in(temp_reg_dec),
+    .out(invsubbytes_out)
+    );
     
-//    keySchedule keyschedule(
-//    .clk(clk),
-//    .rst(rst),
-//    .key(key),
-//    .w_all(key_all_out),
-//    .key_ready_index (key_ready_index) 
-//    );
+    keySchedule keyschedule( 
+    .clk(clk),
+    .rst(rst),
+    .key(key),
+    .w_all(key_all_out),
+    .key_ready_index (key_ready_index) 
+    );
 
 endmodule
